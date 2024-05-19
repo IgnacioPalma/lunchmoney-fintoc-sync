@@ -74,8 +74,9 @@ impl Movement {
             asset_id: Some(asset_id),
             notes: self.comment.clone(),
             external_id: Some(self.id.clone()),
-            status: lunchmoney::TransactionStatus::Pending,
+            status: lunchmoney::TransactionStatus::Uncleared,
             original_name: Some(self.description.clone()),
+            is_pending: Some(self.pending),
             ..Default::default()
         })
     }

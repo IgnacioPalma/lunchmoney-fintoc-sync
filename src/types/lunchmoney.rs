@@ -20,7 +20,6 @@ pub struct Tag {
 pub enum TransactionStatus {
     Cleared,
     Uncleared,
-    Pending
 }
 
 /// An f64 that serializes to a float up to 4 decimal places, as specified in the `Transaction`
@@ -72,6 +71,7 @@ pub struct Transaction {
     pub external_id: Option<String>,
     pub notes: Option<String>,
     pub original_name: Option<String>,
+    pub is_pending: Option<bool>,
 }
 
 impl Default for Transaction {
@@ -92,6 +92,7 @@ impl Default for Transaction {
             tags: None,
             external_id: None,
             original_name: None,
+            is_pending: None,
         }
     }
 }

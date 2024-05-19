@@ -19,6 +19,8 @@ use types::fintoc::AccountCredentials;
 use types::lunchmoney::Transaction;
 use types::HttpsClient;
 
+use crate::lunchmoney::update_asset_balance;
+
 #[derive(Args)]
 struct ListMovementsArgs {
     #[clap(long, value_parser = humantime::parse_duration, default_value = "30d")]
@@ -57,7 +59,7 @@ async fn cmd_list_fintoc_transactions(client: &HttpsClient, args: ListMovementsA
         link_token: args.fintoc_link_token,
     };
 
-    let movements = fetch_fintoc_movements(client, credentials, start_date, end_date)
+    let movements = fetch_fintoc_movements(client, &credentials, start_date, end_date)
         .await
         .unwrap();
 
@@ -123,9 +125,16 @@ async fn cmd_sync_fintoc_movements(
         link_token: args.fintoc_link_token,
     };
 
-    let movements = fetch_fintoc_movements(client, credentials, start_date, end_date)
+    let (balance_amount, balance_currency) =
+        fintoc::fetch_fintoc_balance(client, &credentials).await?;
+
+    println!("Found current account balance: {} {}", balance_amount, balance_currency);
+
+    let movements = fetch_fintoc_movements(client, &credentials, start_date, end_date)
         .await
         .unwrap();
+
+    println!("Fetched a total of {} movements.", movements.len());
 
     let lunchmoney_transactions = movements
         .into_iter()
@@ -134,21 +143,30 @@ async fn cmd_sync_fintoc_movements(
         .collect::<Vec<Transaction>>();
 
     let mut synced_transactions: Vec<u64> = Vec::new();
+    let mut existing_count = 0;
 
     for transaction_chunk in &lunchmoney_transactions.into_iter().chunks(50) {
-        let ids = insert_transactions(
+        let (ids, existing_count_chunk) = insert_transactions(
             client,
             &args.lunch_money_api_token,
             transaction_chunk.collect(),
         )
         .await?;
 
+        existing_count += existing_count_chunk;
+
         synced_transactions.extend(ids);
     }
     println!(
-        "Synced a total of {} transactions successfully.",
-        synced_transactions.len()
+        "Synced a total of {} transactions successfully, {} already existed.",
+        synced_transactions.len(),
+        existing_count
     );
+
+    // Update the asset balance
+    update_asset_balance(client, &args.lunch_money_api_token, args.lunch_money_asset_id, balance_amount, balance_currency).await?;
+
+    println!("Updated asset balance successfully.");
 
     Ok(())
 }

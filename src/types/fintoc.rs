@@ -11,6 +11,48 @@ pub struct Institution {
     pub country: String,
 }
 
+
+// {
+//     "id": "acc_nMNejK7BT8oGbvO4",
+//     "object": "account",
+//     "name": "Cuenta Corriente",
+//     "official_name": "Cuenta Corriente Moneda Local",
+//     "number": "9530516286",
+//     "holder_id": "134910798",
+//     "holder_name": "Jon Snow",
+//     "type": "checking_account",
+//     "currency": "CLP",
+//     "balance": {
+//         "available": 500000,
+//         "current": 500000,
+//         "limit": 500000
+//     },
+//     "refreshed_at": "2020-11-18T18:43:54.591Z"
+// }
+
+#[derive(Debug, Deserialize)]
+pub struct Balance {
+    pub available: i128,
+    pub current: i128,
+    pub limit: i128
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Account {
+    pub id: String,
+    pub object: String,
+    pub name: String,
+    pub official_name: String,
+    pub number: Option<String>,
+    pub holder_id: String,
+    pub holder_name: String,
+    #[serde(rename = "type")]
+    pub account_type: String,
+    pub currency: String,
+    pub balance: Balance,
+    pub refreshed_at: DateTime<Utc>,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct TransferAccount {
     pub holder_id: String,

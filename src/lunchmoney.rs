@@ -2,7 +2,9 @@ use anyhow::bail;
 use anyhow::Result;
 use hyper::header::{AUTHORIZATION, CONTENT_TYPE};
 use hyper::{body, Method, Request, StatusCode};
+use rusty_money::iso::Currency;
 
+use crate::types::lunchmoney::Amount;
 use crate::types::lunchmoney::{
     Asset, GetAllAssetsResponse, InsertTransactionRequest, InsertTransactionResponse, Transaction,
 };
@@ -33,14 +35,13 @@ pub async fn get_all_assets(client: &HttpsClient, api_token: &str) -> Result<Vec
 
     Ok(response.assets)
 }
-
-pub async fn insert_transactions(
+async fn insert_single_transaction(
     client: &HttpsClient,
     api_token: &str,
-    transactions: Vec<Transaction>,
-) -> Result<Vec<u64>> {
+    transaction: &Transaction,
+) -> Result<Option<u64>> {
     let request_body = InsertTransactionRequest {
-        transactions,
+        transactions: vec![transaction],
         apply_rules: Some(true),
         check_for_recurring: Some(true),
         debit_as_negative: Some(true),
@@ -63,36 +64,124 @@ pub async fn insert_transactions(
 
     if status != StatusCode::OK {
         bail!(
-            "Failed to insert Lunch Money transactions, code {}, err:\n{:#?}",
+            "Failed to insert Lunch Money transaction, code {}, err:\n{:#?}",
             status,
             bytes
         );
     }
 
-    // Print raw response
-    println!("{:?}", std::str::from_utf8(&bytes)?);
-
     let response: InsertTransactionResponse = serde_json::from_slice(&bytes)?;
 
-    // Check for errors
     match response {
-        // No errors present
-        InsertTransactionResponse { ids: Some(ids), error: None } => Ok(ids),
-        // Some errors present (with ids)
-        InsertTransactionResponse { ids: Some(ids), error: Some(errors) } => {
+        InsertTransactionResponse {
+            ids: Some(ids),
+            error: None,
+        } => Ok(ids.into_iter().next()),
+        InsertTransactionResponse {
+            ids: Some(ids),
+            error: Some(errors),
+        } => {
             for error in errors {
-                eprintln!("Error: {}", error);
+                if error.contains("already exists") {
+                    return Ok(None);
+                } else {
+                    eprintln!("Error: {}", error);
+                }
             }
-            Ok(ids)
+            Ok(ids.into_iter().next())
         }
-        // Some errors present (without ids)
-        InsertTransactionResponse { ids: None, error: Some(errors) } => {
+        InsertTransactionResponse {
+            ids: None,
+            error: Some(errors),
+        } => {
             for error in errors {
-                eprintln!("Error: {}", error);
+                if error.contains("already exists") {
+                    return Ok(None);
+                } else {
+                    eprintln!("Error: {}", error);
+                }
             }
-            Ok(vec![])
+            Ok(None)
         }
-        // No errors present (without ids)
-        InsertTransactionResponse { ids: None, error: None } => Ok(vec![]),
+        InsertTransactionResponse {
+            ids: None,
+            error: None,
+        } => Ok(None),
     }
+}
+
+pub async fn insert_transactions(
+    client: &HttpsClient,
+    api_token: &str,
+    transactions: Vec<Transaction>,
+) -> Result<(Vec<u64>, u64)> {
+    let mut inserted_ids = vec![];
+    let mut existing_count = 0;
+
+    for transaction in &transactions {
+        match insert_single_transaction(client, api_token, transaction).await {
+            Ok(Some(id)) => inserted_ids.push(id),
+            Ok(None) => existing_count += 1,
+            Err(err) => eprintln!("Failed to insert transaction: {:?}", err),
+        }
+    }
+
+    Ok((inserted_ids, existing_count))
+}
+
+pub async fn update_asset_balance(
+    client: &HttpsClient,
+    api_token: &str,
+    asset_id: u64,
+    new_balance: Amount,
+    balance_currency: Currency,
+) -> Result<()> {
+    let updated_asset = Asset {
+        id: Some(asset_id),
+        balance: new_balance,
+        currency: balance_currency.to_string().to_lowercase(),
+        ..Default::default()
+    };
+
+    let request = Request::builder()
+        .method(Method::PUT)
+        .uri(format!("https://dev.lunchmoney.app/v1/assets/{}", asset_id))
+        .header(AUTHORIZATION, format!("Bearer {}", api_token))
+        .header(CONTENT_TYPE, "application/json; charset=utf-8")
+        .body(serde_json::to_vec(&updated_asset)?.into())
+        .unwrap();
+
+    let response = client.request(request).await?;
+
+    let status = response.status();
+
+    if status != StatusCode::OK {
+        bail!(
+            "Failed to update Lunch Money asset balance, code {}",
+            status
+        );
+    }
+
+    let bytes = body::to_bytes(response).await?;
+
+    let updated_asset: Asset = serde_json::from_slice(&bytes)?;
+
+    // Assert new balance = updated_asset.balance
+    if updated_asset.balance != new_balance {
+        bail!(
+            "Failed to update Lunch Money asset balance, expected {:?}, got {:?}",
+            new_balance,
+            updated_asset.balance,
+        );
+    }
+    // Assert new currency = updated_asset.currency
+    if updated_asset.currency != balance_currency.to_string().to_lowercase() {
+        bail!(
+            "Failed to update Lunch Money asset balance, expected {}, got {}",
+            balance_currency,
+            updated_asset.currency,
+        );
+    }
+
+    Ok(())
 }

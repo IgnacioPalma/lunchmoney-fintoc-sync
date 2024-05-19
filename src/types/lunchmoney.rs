@@ -24,7 +24,7 @@ pub enum TransactionStatus {
 
 /// An f64 that serializes to a float up to 4 decimal places, as specified in the `Transaction`
 /// amount field description in https://lunchmoney.dev/#transaction-object.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Amount(pub f64);
 
 impl FromStr for Amount {
@@ -98,23 +98,42 @@ impl Default for Transaction {
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Asset {
-    pub id: u64,
+    pub id: Option<u64>,
     #[serde(rename = "type_name")]
-    pub type_: String,
+    pub type_: Option<String>,
     #[serde(rename = "subtype_name")]
     pub subtype: Option<String>,
-    pub name: String,
+    pub name: Option<String>,
     pub display_name: Option<String>,
     #[serde_as(as = "DisplayFromStr")]
     pub balance: Amount,
-    pub balance_as_of: DateTime<Utc>,
+    pub balance_as_of: Option<DateTime<Utc>>,
     pub closed_on: Option<String>,
     pub currency: String,
-    pub institution_name: String,
+    pub institution_name: Option<String>,
     pub exclude_transactions: Option<bool>,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Option<DateTime<Utc>>,
+}
+
+impl Default for Asset {
+    fn default() -> Self {
+        Self {
+            id: None,
+            type_: None,
+            subtype: None,
+            name: None,
+            display_name: None,
+            balance: Amount(0.0),
+            balance_as_of: None,
+            closed_on: None,
+            currency: "usd".to_string(),
+            institution_name: None,
+            exclude_transactions: None,
+            created_at: None,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -124,8 +143,8 @@ pub struct GetAllAssetsResponse {
 
 #[skip_serializing_none]
 #[derive(Debug, Serialize)]
-pub struct InsertTransactionRequest {
-    pub transactions: Vec<Transaction>,
+pub struct InsertTransactionRequest<'a> {
+    pub transactions: Vec<&'a Transaction>,
     pub apply_rules: Option<bool>,
     pub skip_duplicates: Option<bool>,
     pub check_for_recurring: Option<bool>,

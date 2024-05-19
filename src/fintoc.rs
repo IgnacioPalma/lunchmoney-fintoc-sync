@@ -8,14 +8,17 @@ use chrono::{DateTime, Utc};
 use dialoguer::{Confirm, Input, Password};
 use hyper::header::{AUTHORIZATION, CONTENT_TYPE, COOKIE};
 use hyper::{body, body::Buf, Method, Request, StatusCode};
+use rusty_money::iso::Currency;
 use serde_json::{json, Value};
 
+use crate::types::fintoc::Account;
 use crate::types::fintoc::{AccountCredentials, Institution, Movement, TransferAccount};
+use crate::types::lunchmoney::Amount;
 use crate::types::HttpsClient;
 
 pub async fn fetch_fintoc_movements(
     client: &HttpsClient,
-    credentials: AccountCredentials,
+    credentials: &AccountCredentials,
     start_date: DateTime<Utc>,
     end_date: DateTime<Utc>,
 ) -> Result<Vec<Movement>> {
@@ -75,4 +78,41 @@ pub async fn fetch_fintoc_movements(
     }
 
     Ok(movements)
+}
+
+pub async fn fetch_fintoc_balance(
+    client: &HttpsClient,
+    credentials: &AccountCredentials,
+) -> Result<(Amount, Currency)> {
+    let request = Request::builder()
+        .method(Method::GET)
+        .uri(format!(
+            "https://api.fintoc.com/v1/accounts/{}?link_token={}",
+            credentials.account_id, credentials.link_token,
+        ))
+        .header(AUTHORIZATION, credentials.secret_token.clone())
+        .header(CONTENT_TYPE, "application/json")
+        .body(body::Body::empty())
+        .context("Failed to build request")?;
+
+    let response = client.request(request).await?;
+
+    let status = response.status();
+    let bytes = body::to_bytes(response).await?;
+
+    if status != StatusCode::OK {
+        bail!(
+            "Failed to get Fintoc balance, code {}, err:\n{:#?}",
+            status,
+            bytes
+        );
+    }
+
+    let account: Account = serde_json::from_slice(&bytes)?;
+
+    Ok((
+        Amount(account.balance.current as f64),
+        *rusty_money::iso::find(&account.currency)
+            .ok_or_else(|| anyhow!("Given currency {} is not valid", account.currency))?,
+    ))
 }

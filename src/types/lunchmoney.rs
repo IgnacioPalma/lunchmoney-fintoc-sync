@@ -20,8 +20,7 @@ pub struct Tag {
 pub enum TransactionStatus {
     Cleared,
     Uncleared,
-    Recurring,
-    RecurringSuggested,
+    Pending
 }
 
 /// An f64 that serializes to a float up to 4 decimal places, as specified in the `Transaction`
@@ -56,11 +55,13 @@ impl From<f64> for Amount {
 pub struct Transaction {
     pub id: Option<u64>,
     pub date: DateTime<Utc>,
+    // This is the display name of the payee
     pub payee: Option<String>,
     #[serde_as(as = "DisplayFromStr")]
     pub amount: Amount,
+    // Lowercase ISO 4217 currency code
     pub currency: Option<String>,
-    pub notes: Option<String>,
+
     pub category_id: Option<u64>,
     pub asset_id: Option<u64>,
     pub status: TransactionStatus,
@@ -69,6 +70,7 @@ pub struct Transaction {
     pub group_id: Option<u64>,
     pub tags: Option<Vec<Tag>>,
     pub external_id: Option<String>,
+    pub notes: Option<String>,
     pub original_name: Option<String>,
 }
 

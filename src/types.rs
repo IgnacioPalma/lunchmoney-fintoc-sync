@@ -6,3 +6,4 @@ pub type HttpsClient = Client<HttpsConnector<HttpConnector>>;
 
 pub mod lunchmoney;
 pub mod venmo;
+pub mod fintoc;

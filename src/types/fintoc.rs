@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize};
+use serde::Deserialize;
 
 use super::lunchmoney;
 
@@ -9,7 +9,6 @@ pub struct Institution {
     pub name: String,
     pub country: String,
 }
-
 
 // {
 //     "id": "acc_nMNejK7BT8oGbvO4",
@@ -33,7 +32,7 @@ pub struct Institution {
 pub struct Balance {
     pub available: i128,
     pub current: i128,
-    pub limit: i128
+    pub limit: i128,
 }
 
 #[derive(Debug, Deserialize)]

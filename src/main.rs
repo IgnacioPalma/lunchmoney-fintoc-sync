@@ -127,7 +127,10 @@ async fn cmd_sync_fintoc_movements(
     let (balance_amount, balance_currency) =
         fintoc::fetch_fintoc_balance(client, &credentials).await?;
 
-    println!("Found current account balance: {} {}", balance_amount, balance_currency);
+    println!(
+        "Found current account balance: {} {}",
+        balance_amount, balance_currency
+    );
 
     let movements = fetch_fintoc_movements(client, &credentials, start_date, end_date)
         .await
@@ -163,7 +166,14 @@ async fn cmd_sync_fintoc_movements(
     );
 
     // Update the asset balance
-    update_asset_balance(client, &args.lunch_money_api_token, args.lunch_money_asset_id, balance_amount, balance_currency).await?;
+    update_asset_balance(
+        client,
+        &args.lunch_money_api_token,
+        args.lunch_money_asset_id,
+        balance_amount,
+        balance_currency,
+    )
+    .await?;
 
     println!("Updated asset balance successfully.");
 

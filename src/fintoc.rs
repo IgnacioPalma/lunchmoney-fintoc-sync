@@ -1,4 +1,3 @@
-
 use anyhow::anyhow;
 use anyhow::bail;
 use anyhow::Context;
@@ -7,7 +6,7 @@ use chrono::{DateTime, Utc};
 use hyper::header::{AUTHORIZATION, CONTENT_TYPE};
 use hyper::{body, Method, Request, StatusCode};
 use rusty_money::iso::Currency;
-use serde_json::{Value};
+use serde_json::Value;
 
 use crate::types::fintoc::Account;
 use crate::types::fintoc::{AccountCredentials, Movement};

@@ -74,13 +74,7 @@ impl Movement {
             asset_id: Some(asset_id),
             notes: self.comment.clone(),
             external_id: Some(self.id.clone()),
-            status: {
-                if self.pending {
-                    lunchmoney::TransactionStatus::Pending
-                } else {
-                    lunchmoney::TransactionStatus::Cleared
-                }
-            },
+            status: lunchmoney::TransactionStatus::Pending,
             original_name: Some(self.description.clone()),
             ..Default::default()
         })

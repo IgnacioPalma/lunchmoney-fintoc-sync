@@ -134,5 +134,6 @@ pub struct InsertTransactionRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct InsertTransactionResponse {
-    pub ids: Vec<u64>,
+    pub ids: Option<Vec<u64>>,
+    pub error: Option<Vec<String>>,
 }

@@ -69,7 +69,30 @@ pub async fn insert_transactions(
         );
     }
 
+    // Print raw response
+    println!("{:?}", std::str::from_utf8(&bytes)?);
+
     let response: InsertTransactionResponse = serde_json::from_slice(&bytes)?;
 
-    Ok(response.ids)
+    // Check for errors
+    match response {
+        // No errors present
+        InsertTransactionResponse { ids: Some(ids), error: None } => Ok(ids),
+        // Some errors present (with ids)
+        InsertTransactionResponse { ids: Some(ids), error: Some(errors) } => {
+            for error in errors {
+                eprintln!("Error: {}", error);
+            }
+            Ok(ids)
+        }
+        // Some errors present (without ids)
+        InsertTransactionResponse { ids: None, error: Some(errors) } => {
+            for error in errors {
+                eprintln!("Error: {}", error);
+            }
+            Ok(vec![])
+        }
+        // No errors present (without ids)
+        InsertTransactionResponse { ids: None, error: None } => Ok(vec![]),
+    }
 }

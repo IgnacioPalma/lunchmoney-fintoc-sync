@@ -10,24 +10,6 @@ pub struct Institution {
     pub country: String,
 }
 
-// {
-//     "id": "acc_nMNejK7BT8oGbvO4",
-//     "object": "account",
-//     "name": "Cuenta Corriente",
-//     "official_name": "Cuenta Corriente Moneda Local",
-//     "number": "9530516286",
-//     "holder_id": "134910798",
-//     "holder_name": "Jon Snow",
-//     "type": "checking_account",
-//     "currency": "CLP",
-//     "balance": {
-//         "available": 500000,
-//         "current": 500000,
-//         "limit": 500000
-//     },
-//     "refreshed_at": "2020-11-18T18:43:54.591Z"
-// }
-
 #[derive(Debug, Deserialize)]
 pub struct Balance {
     pub available: i128,
@@ -85,7 +67,6 @@ impl Movement {
         &self,
         asset_id: u64,
     ) -> Result<lunchmoney::Transaction, Error> {
-        // TODO: Figure out directions
         let amount = lunchmoney::Amount(self.amount as f64);
 
         let payee = match &self.recipient_account {
@@ -100,6 +81,7 @@ impl Movement {
             // Otherwise extract from description
             None => {
                 // Strip common prefixes if present
+                // TODO: Expand this list
                 let re = regex::Regex::new(r#"^(?i)(COMPRA INTERNACIONAL|COMPRA NACIONAL|PAGO RECURRENTE|COMPRA INTER.)\s"#).unwrap();
                 re.replace(&self.description, "").to_string()
             }
@@ -110,7 +92,6 @@ impl Movement {
             payee: Some(payee),
             amount,
             currency: Some(self.currency.to_lowercase()),
-            // TODO: Check what this is
             asset_id: Some(asset_id),
             notes: self.comment.clone(),
             external_id: Some(self.id.clone()),

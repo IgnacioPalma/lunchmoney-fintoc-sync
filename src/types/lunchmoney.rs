@@ -24,6 +24,7 @@ pub enum TransactionStatus {
 
 /// An f64 that serializes to a float up to 4 decimal places, as specified in the `Transaction`
 /// amount field description in https://lunchmoney.dev/#transaction-object.
+/// TODO: Verify the sanity of using floats over decimals for currency amounts.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Amount(pub f64);
 

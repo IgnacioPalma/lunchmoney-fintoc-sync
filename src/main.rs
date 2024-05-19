@@ -5,7 +5,6 @@ use hyper::client::Client;
 use hyper_tls::HttpsConnector;
 use std::time::Duration;
 
-use anyhow::anyhow;
 use anyhow::Result;
 
 mod fintoc;

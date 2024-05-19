@@ -1,18 +1,16 @@
-use std::io::BufRead;
 
 use anyhow::anyhow;
 use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use dialoguer::{Confirm, Input, Password};
-use hyper::header::{AUTHORIZATION, CONTENT_TYPE, COOKIE};
-use hyper::{body, body::Buf, Method, Request, StatusCode};
+use hyper::header::{AUTHORIZATION, CONTENT_TYPE};
+use hyper::{body, Method, Request, StatusCode};
 use rusty_money::iso::Currency;
-use serde_json::{json, Value};
+use serde_json::{Value};
 
 use crate::types::fintoc::Account;
-use crate::types::fintoc::{AccountCredentials, Institution, Movement, TransferAccount};
+use crate::types::fintoc::{AccountCredentials, Movement};
 use crate::types::lunchmoney::Amount;
 use crate::types::HttpsClient;
 

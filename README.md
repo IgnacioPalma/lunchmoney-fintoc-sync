@@ -1,5 +1,5 @@
 # lunchmoney-fintoc-syncer
-A Rust CLI to sync transactions from Chilean banks with the [Lunch Money budget app](https://lunchmoney.app). This uses [Fintoc](https://fintoc.com/), which provides a free API for querying your bank transactions.
+A Rust CLI to sync transactions from Chilean banks with the [Lunch Money budget app](https://lunchmoney.app). This uses [Fintoc](https://fintoc.com/), which provides a free API for querying your bank transactions. This should work with pretty much any Chilean bank.
 
 This is pretty much WIP; don't expect it to be particularly stable (or not mess up all your transactions).
  
@@ -12,13 +12,13 @@ This CLI only allows you to sync the transactions on demand. You can define a ra
 
 ## Setup
 ### Lunch Money
-1. Create a "manually-managed asset" in Lunch Money to sync your transactions to. You can do this on the [accounts page](https://my.lunchmoney.app/accounts) -> "Add Account" -> Scroll down to the "manually-managed assets" section and select "Cash" -> Select "Digital wallet (paypal, venmo)" -> configure the name as you desire.
-2. Generate a Lunch Money API key. Go to the [developer page](https://my.lunchmoney.app/developers) and select "Request New Access Token". Copy this token to somewhere secure for later use. TREAT THIS TOKEN AS IF IT WERE A PASSWORD.
+1. Create a "manually-managed asset" in Lunch Money to sync your transactions to. You can do this on the [accounts page](https://my.lunchmoney.app/accounts) -> "Add Account" -> Scroll down to the "manually-managed assets" section and select "Cash" -> Select 'Checking' (cuenta corriente) or 'Savings' (cuenta vista) -> configure the name as you desire.
+2. Generate a Lunch Money API key. Go to the [developer page](https://my.lunchmoney.app/developers) and select "Request New Access Token". Copy this token to somewhere secure for later user.
 
 ### Project Setup
 1. Setup the Rust toolchain locally. I recommend using [rustup.rs](https://rustup.rs). You should now be able to run `cargo` in your terminal.
-2. Clone this repo somewhere and `cd` to it, e.g. `git clone https://github.com/emersonford/lunchmoney-venmo-syncer.git && cd lunchmoney-venmo-syncer`.
-3. Run `cargo run -- list-lunch-money-assets --api-token <LUNCHMONEY_API_TOKEN>` where `<LUNCHMONEY_API_TOKEN>` is the Lunch Money API token you generated earlier. Find the asset corresponding to the "manually-managed asset" you created earlier and make note of the ID of that asset.
+2. Clone this repo somewhere and `cd` to it, e.g. `git clone https://github.com/agucova/lunchmoney-fintoc-syncer.git && cd lunchmoney-fintoc-syncer`.
+3. Run `cargo run list-lunch-money-assets --api-token <LUNCHMONEY_API_TOKEN>` where `<LUNCHMONEY_API_TOKEN>` is the Lunch Money API token you generated earlier. Find the asset corresponding to the "manually-managed asset" you created earlier and make note of the ID of that asset.
 4. Connect your bank through the Fintoc panel, and store its link token, plus your personal secret key (you can find this in settings). 
 
 ## Running the Command

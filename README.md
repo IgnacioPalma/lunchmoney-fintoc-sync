@@ -18,7 +18,7 @@ This CLI only allows you to sync the transactions on demand. You can define a ra
 ### Project Setup
 1. Setup the Rust toolchain locally. I recommend using [rustup.rs](https://rustup.rs). You should now be able to run `cargo` in your terminal.
 2. Clone this repo somewhere and `cd` to it, e.g. `git clone https://github.com/agucova/lunchmoney-fintoc-syncer.git && cd lunchmoney-fintoc-syncer`.
-3. Run `cargo run list-lunch-money-assets --api-token <LUNCHMONEY_API_TOKEN>` where `<LUNCHMONEY_API_TOKEN>` is the Lunch Money API token you generated earlier. Find the asset corresponding to the "manually-managed asset" you created earlier and make note of the ID of that asset.
+3. Run `cargo run list-lunch-money-assets --lunch-money-api-token <LUNCHMONEY_API_TOKEN>` where `<LUNCHMONEY_API_TOKEN>` is the Lunch Money API token you generated earlier. Find the asset corresponding to the manually-managed asset you created earlier and make note of the ID of that asset.
 4. Connect your bank through the Fintoc panel, and store its link token, plus your personal secret key (you can find this in settings). 
 
 ## Running the Command

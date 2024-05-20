@@ -163,7 +163,7 @@ async fn cmd_sync_fintoc_movements(
         synced_transactions.extend(ids);
     }
     println!(
-        "Synced a total of {} transactions successfully, {} already existed.",
+        "Sync complete: {} new transactions were inserted, and {} already existed.",
         synced_transactions.len(),
         existing_count
     );

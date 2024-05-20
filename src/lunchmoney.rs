@@ -35,6 +35,7 @@ pub async fn get_all_assets(client: &HttpsClient, api_token: &str) -> Result<Vec
 
     Ok(response.assets)
 }
+
 async fn insert_single_transaction(
     client: &HttpsClient,
     api_token: &str,
@@ -83,7 +84,7 @@ async fn insert_single_transaction(
         } => {
             for error in errors {
                 if error.contains("already exists") {
-                    return Ok(None);
+                    return Ok(None); // Indicate that the transaction already exists
                 } else {
                     eprintln!("Error: {}", error);
                 }
@@ -96,7 +97,7 @@ async fn insert_single_transaction(
         } => {
             for error in errors {
                 if error.contains("already exists") {
-                    return Ok(None);
+                    return Ok(None); // Indicate that the transaction already exists
                 } else {
                     eprintln!("Error: {}", error);
                 }
@@ -121,14 +122,13 @@ pub async fn insert_transactions(
     for transaction in &transactions {
         match insert_single_transaction(client, api_token, transaction).await {
             Ok(Some(id)) => inserted_ids.push(id),
-            Ok(None) => existing_count += 1,
+            Ok(None) => existing_count += 1, // Count existing transactions
             Err(err) => eprintln!("Failed to insert transaction: {:?}", err),
         }
     }
 
     Ok((inserted_ids, existing_count))
 }
-
 pub async fn update_asset_balance(
     client: &HttpsClient,
     api_token: &str,

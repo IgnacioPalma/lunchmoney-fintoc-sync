@@ -137,6 +137,9 @@ async fn cmd_sync_fintoc_movements(
         .unwrap();
 
     println!("Fetched a total of {} movements.", movements.len());
+    for movement in &movements {
+        println!("{:?}", movement);
+    }
 
     let lunchmoney_transactions = movements
         .into_iter()

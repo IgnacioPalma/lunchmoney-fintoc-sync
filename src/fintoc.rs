@@ -23,7 +23,6 @@ pub async fn fetch_fintoc_movements(
     let mut page = 1;
     let mut movements = Vec::new();
 
-    // Paginate using the `Link` header
     loop {
         let request = Request::builder()
             .method(Method::GET)

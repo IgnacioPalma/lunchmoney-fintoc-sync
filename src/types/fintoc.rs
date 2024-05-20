@@ -42,6 +42,14 @@ pub struct TransferAccount {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MovementType {
+    Transfer,
+    Check,
+    Other,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct Movement {
     pub id: String,
     pub object: String,
@@ -52,7 +60,7 @@ pub struct Movement {
     pub currency: String,
     pub reference_id: Option<String>,
     #[serde(rename = "type")]
-    pub movement_type: String,
+    pub movement_type: MovementType,
     pub pending: bool,
     pub recipient_account: Option<TransferAccount>,
     pub sender_account: Option<TransferAccount>,
@@ -63,28 +71,46 @@ pub struct Movement {
 type Error = String;
 
 impl Movement {
+    pub fn clean_description(&self) -> String {
+        // Strip common prefixes if present
+        // TODO: Expand this list, or map these to pretty names 
+        let re = regex::Regex::new(
+            r#"^(?i)(COMPRA INTERNACIONAL|COMPRA NACIONAL|PAGO RECURRENTE|COMPRA INTER.)\s"#,
+        )
+        .unwrap();
+        re.replace(&self.description, "").to_string()
+    }
+
     pub fn to_lunchmoney_transaction(
         &self,
         asset_id: u64,
     ) -> Result<lunchmoney::Transaction, Error> {
         let amount = lunchmoney::Amount(self.amount as f64);
 
-        let payee = match &self.recipient_account {
-            // If holder_name & institution name are present, use both
-            Some(account) => {
-                if let Some(institution) = &account.institution {
-                    format!("{} ({})", account.holder_name, institution.name)
+        let payee = match &self.movement_type {
+            MovementType::Transfer => {
+                let payee = if self.amount > 0 {
+                    // Deposit by another account
+                    &self.sender_account
                 } else {
-                    account.holder_name.clone()
+                    // Withdrawal to another account
+                    &self.recipient_account
+                };
+                match payee {
+                    Some(account) => match &account.institution {
+                        // Add institution name if available
+                        Some(institution) => {
+                            format!("{} ({})", account.holder_name, institution.name)
+                        }
+                        // Otherwise, just use the account holder name
+                        None => account.holder_name.clone(),
+                    },
+                    None => self.clean_description(),
                 }
             }
-            // Otherwise extract from description
-            None => {
-                // Strip common prefixes if present
-                // TODO: Expand this list
-                let re = regex::Regex::new(r#"^(?i)(COMPRA INTERNACIONAL|COMPRA NACIONAL|PAGO RECURRENTE|COMPRA INTER.)\s"#).unwrap();
-                re.replace(&self.description, "").to_string()
-            }
+            // If it's not a transfer, just clean the movement description
+            // provided by the bank
+            _ => self.clean_description(),
         };
 
         Ok(lunchmoney::Transaction {

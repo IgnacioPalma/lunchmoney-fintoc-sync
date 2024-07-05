@@ -2,12 +2,12 @@ use anyhow::Result;
 use chrono::offset::{Local, Utc};
 use chrono::DateTime;
 use clap::{Parser, Subcommand};
+use colored::*;
 use config::Config;
 use hyper::client::Client;
 use hyper_tls::HttpsConnector;
-use serde::Deserialize;
 use indicatif::{ProgressBar, ProgressStyle};
-use colored::*;
+use serde::Deserialize;
 
 mod fintoc;
 mod lunchmoney;
@@ -64,7 +64,6 @@ struct Cmd {
     #[clap(long)]
     debug: bool,
 }
-
 
 #[derive(Subcommand)]
 enum Verb {
@@ -129,7 +128,10 @@ async fn cmd_list_fintoc_transactions(
         };
 
         for account in accounts_to_list {
-            println!("{}", format!("Listing movements for {} - {}", bank.name, account.name).bold());
+            println!(
+                "{}",
+                format!("Listing movements for {} - {}", bank.name, account.name).bold()
+            );
 
             let credentials = AccountCredentials {
                 account_id: account.fintoc_account_id.clone(),
@@ -137,31 +139,29 @@ async fn cmd_list_fintoc_transactions(
                 link_token: bank.link_token.clone(),
             };
 
-            let movements = fetch_fintoc_movements(client, &credentials, start_date, end_date).await?;
+            let movements =
+                fetch_fintoc_movements(client, &credentials, start_date, end_date).await?;
 
-            for movement in movements {
-                if debug {
-                    println!("{}", format!("{:?}", movement).cyan());
-                } else {
-                    println!(
-                        "{}",
-                        format!(
-                            "Date: {}, Description: {}, Amount: {} {}",
-                            movement.post_date,
-                            movement.description,
-                            movement.amount,
-                            movement.currency
-                        )
-                        .cyan()
-                    );
-                }
+            // Convert to lunchmoney transactions
+            let transactions = movements
+                .into_iter()
+                .filter_map(|movement| {
+                    account
+                        .lunch_money_asset_id
+                        .parse::<u64>()
+                        .ok()
+                        .and_then(|asset_id| movement.to_lunchmoney_transaction(asset_id).ok())
+                })
+                .collect::<Vec<Transaction>>();
+
+            for transaction in transactions {
+                println!("{}", transaction.to_colored_string());
             }
         }
     }
 
     Ok(())
 }
-
 
 async fn cmd_list_lunch_money_assets(client: &HttpsClient, config: &AppConfig) -> Result<()> {
     let assets = get_all_assets(client, &config.tokens.lunch_money_api_token).await?;
@@ -204,7 +204,10 @@ async fn cmd_sync_fintoc_movements(
         };
 
         for account in accounts_to_sync {
-            println!("{}", format!("Syncing {} - {}", bank.name, account.name).bold());
+            println!(
+                "{}",
+                format!("Syncing {} - {}", bank.name, account.name).bold()
+            );
 
             let credentials = AccountCredentials {
                 account_id: account.fintoc_account_id.clone(),
@@ -217,28 +220,36 @@ async fn cmd_sync_fintoc_movements(
 
             println!(
                 "{}",
-                format!("Found current account balance: {} {}", balance_amount, balance_currency)
-                    .green()
+                format!(
+                    "Found current account balance: {} {}",
+                    balance_amount, balance_currency
+                )
+                .green()
             );
 
             let movements =
                 fetch_fintoc_movements(client, &credentials, start_date, end_date).await?;
 
-            println!("{}", format!("Fetched a total of {} movements.", movements.len()).blue());
+            println!(
+                "{}",
+                format!("Fetched a total of {} movements.", movements.len()).blue()
+            );
 
             let pb = ProgressBar::new(movements.len() as u64);
             pb.set_style(
                 ProgressStyle::default_bar()
                     .template("{msg}\n{wide_bar} {pos}/{len} ({eta})")?
-                    .progress_chars("=>-")
+                    .progress_chars("=>-"),
             );
 
             let lunchmoney_transactions = movements
                 .into_iter()
                 .filter_map(|movement| {
-                    account.lunch_money_asset_id.parse::<u64>().ok().and_then(|asset_id| {
-                        movement.to_lunchmoney_transaction(asset_id).ok()
-                    })
+                    account
+                        .lunch_money_asset_id
+                        .parse::<u64>()
+                        .ok()
+                        .and_then(|asset_id| movement.to_lunchmoney_transaction(asset_id).ok())
                 })
                 .collect::<Vec<Transaction>>();
 
@@ -304,7 +315,10 @@ async fn main() -> Result<()> {
         Verb::ListMovements {
             bank_name,
             account_name,
-        } => cmd_list_fintoc_transactions(&client, &config, &bank_name, &account_name, cmd.debug).await,
+        } => {
+            cmd_list_fintoc_transactions(&client, &config, &bank_name, &account_name, cmd.debug)
+                .await
+        }
         Verb::ListLunchMoneyAssets => cmd_list_lunch_money_assets(&client, &config).await,
         Verb::SyncFintocMovements {
             bank_name,

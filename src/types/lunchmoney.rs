@@ -4,8 +4,11 @@ use std::str::FromStr;
 use std::time::UNIX_EPOCH;
 
 use chrono::{DateTime, Utc};
+use colored::*;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none, DisplayFromStr};
+
+use currency_rs::{Currency, CurrencyOpts};
 
 /// Tag object as described in https://lunchmoney.dev/#tags-object.
 #[derive(Debug, Serialize)]
@@ -96,6 +99,55 @@ impl Default for Transaction {
             original_name: None,
             is_pending: None,
         }
+    }
+}
+
+impl Transaction {
+    pub fn to_colored_string(&self) -> ColoredString {
+        let payee = match &self.payee {
+            Some(payee) => payee.clone(),
+            None => "Unknown".to_string(),
+        };
+
+        let opt = match &self.currency {
+            Some(currency) => match currency.to_uppercase().as_str() {
+                "USD" => CurrencyOpts::new()
+                    .set_symbol("$")
+                    .set_precision(2)
+                    .set_from_cents(false),
+                "EUR" => CurrencyOpts::new()
+                    .set_symbol("€")
+                    .set_precision(2)
+                    .set_from_cents(false),
+                "CLP" => CurrencyOpts::new()
+                    .set_symbol("$")
+                    .set_precision(0)
+                    .set_from_cents(false),
+                _ => CurrencyOpts::default(),
+            },
+            None => CurrencyOpts::default(),
+        };
+
+        let currency: Currency = Currency::new_float(self.amount.0, Some(opt));
+
+        let amount = match self.amount.0 {
+            amount if amount >= 0.0 => currency.format().green(),
+            _ => currency.format().red(),
+        };
+
+        let currency_unit = &self
+            .currency
+            .as_ref()
+            .unwrap_or(&"UNK".to_string())
+            .to_uppercase();
+
+        let datetime_str = self.date.format("%Y-%m-%d").to_string();
+
+        format!(
+            "{} - {}: {} ({})",
+            datetime_str, payee, amount, currency_unit
+        )
+        .normal()
     }
 }
 

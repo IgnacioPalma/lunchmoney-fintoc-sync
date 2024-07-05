@@ -87,7 +87,18 @@ impl Movement {
         &self,
         asset_id: u64,
     ) -> Result<lunchmoney::Transaction, Error> {
-        let amount = lunchmoney::Amount(self.amount as f64);
+        let amount = match self.currency.to_uppercase().as_str() {
+            "CLP" => lunchmoney::Amount(self.amount as f64),
+            "USD" => lunchmoney::Amount(self.amount as f64 / 100.0),
+            "EUR" => lunchmoney::Amount(self.amount as f64 / 100.0),
+            _ => {
+                return Err(format!(
+                    "Currency {} is not supported.",
+                    self.currency.to_uppercase(),
+                ));
+            }
+        };
+        
 
         let payee = match &self.movement_type {
             MovementType::Transfer => {

@@ -40,11 +40,20 @@ struct Bank {
     accounts: Vec<Account>,
 }
 
+#[derive(Debug, Deserialize, PartialEq, Clone, Copy)]
+enum AccountType {
+    Checking,
+    Savings,
+    Credit,
+}
+
 #[derive(Debug, Deserialize)]
 struct Account {
     name: String,
     fintoc_account_id: String,
     lunch_money_asset_id: String,
+    #[serde(rename = "type")]
+    account_type: AccountType,
 }
 
 #[derive(Debug, Deserialize)]
@@ -216,7 +225,7 @@ async fn cmd_sync_fintoc_movements(
             };
 
             let (balance_amount, balance_currency) =
-                fintoc::fetch_fintoc_balance(client, &credentials).await?;
+                fintoc::fetch_fintoc_balance(client, &credentials, account.account_type).await?;
 
             println!(
                 "{}",
@@ -227,60 +236,61 @@ async fn cmd_sync_fintoc_movements(
                 .green()
             );
 
-            let movements =
-                fetch_fintoc_movements(client, &credentials, start_date, end_date).await?;
+            if account.account_type == AccountType::Credit {
+                println!(
+                    "{}",
+                    format!(
+                        "Skipping movements sync for {} - {} as it's credit.",
+                        bank.name, account.name
+                    )
+                    .yellow()
+                );
+            } else {
+                let movements =
+                    fetch_fintoc_movements(client, &credentials, start_date, end_date).await?;
 
-            println!(
-                "{}",
-                format!("Fetched a total of {} movements.", movements.len()).blue()
-            );
+                println!(
+                    "{}",
+                    format!("Fetched a total of {} movements.", movements.len()).blue()
+                );
 
-            let pb = ProgressBar::new(movements.len() as u64);
-            pb.set_style(
-                ProgressStyle::default_bar()
-                    .template("{msg}\n{wide_bar} {pos}/{len} ({eta})")?
-                    .progress_chars("=>-"),
-            );
+                let pb = ProgressBar::new(movements.len() as u64);
+                pb.set_style(
+                    ProgressStyle::default_bar()
+                        .template("{msg}\n{wide_bar} {pos}/{len} ({eta})")?
+                        .progress_chars("=>-"),
+                );
 
-            let lunchmoney_transactions = movements
-                .into_iter()
-                .filter_map(|movement| {
-                    account
-                        .lunch_money_asset_id
-                        .parse::<u64>()
-                        .ok()
-                        .and_then(|asset_id| movement.to_lunchmoney_transaction(asset_id).ok())
-                })
-                .collect::<Vec<Transaction>>();
+                let lunchmoney_transactions = movements
+                    .into_iter()
+                    .filter_map(|movement| {
+                        account
+                            .lunch_money_asset_id
+                            .parse::<u64>()
+                            .ok()
+                            .and_then(|asset_id| movement.to_lunchmoney_transaction(asset_id).ok())
+                    })
+                    .collect::<Vec<Transaction>>();
 
-            let mut synced_transactions: Vec<u64> = Vec::new();
-            let mut existing_count = 0;
+                let mut synced_transactions: Vec<u64> = Vec::new();
+                let mut existing_count = 0;
 
-            for transaction_chunk in &lunchmoney_transactions.into_iter().chunks(50) {
-                let (ids, existing_count_chunk) = insert_transactions(
-                    client,
-                    &config.tokens.lunch_money_api_token,
-                    transaction_chunk.collect(),
-                )
-                .await?;
+                for transaction_chunk in &lunchmoney_transactions.into_iter().chunks(50) {
+                    let (ids, existing_count_chunk) = insert_transactions(
+                        client,
+                        &config.tokens.lunch_money_api_token,
+                        transaction_chunk.collect(),
+                    )
+                    .await?;
 
-                existing_count += existing_count_chunk;
-                synced_transactions.extend(ids);
-                pb.set_message(format!("Processing chunk..."));
-                pb.inc(50);
+                    existing_count += existing_count_chunk;
+                    synced_transactions.extend(ids);
+                    pb.set_message(format!("Processing chunk..."));
+                    pb.inc(50);
+                }
+
+                pb.finish_and_clear();
             }
-
-            pb.finish_with_message("Sync complete!");
-
-            println!(
-                "{}",
-                format!(
-                    "Sync complete: {} new transactions were inserted, and {} already existed.",
-                    synced_transactions.len(),
-                    existing_count
-                )
-                .green()
-            );
 
             update_asset_balance(
                 client,
@@ -292,6 +302,9 @@ async fn cmd_sync_fintoc_movements(
             .await?;
 
             println!("{}", "Updated asset balance successfully.".green());
+
+            // Finished sync! (either with or without movements)
+            println!("{}\n", "Finished sync!".bold());
         }
     }
 

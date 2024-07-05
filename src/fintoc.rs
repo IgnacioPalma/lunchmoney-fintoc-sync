@@ -1,6 +1,7 @@
 use anyhow::anyhow;
 use anyhow::bail;
 use anyhow::Context;
+use anyhow::Error;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use hyper::header::{AUTHORIZATION, CONTENT_TYPE};
@@ -12,6 +13,7 @@ use crate::types::fintoc::Account;
 use crate::types::fintoc::{AccountCredentials, Movement};
 use crate::types::lunchmoney::Amount;
 use crate::types::HttpsClient;
+use crate::AccountType;
 
 pub async fn fetch_fintoc_movements(
     client: &HttpsClient,
@@ -79,6 +81,7 @@ pub async fn fetch_fintoc_movements(
 pub async fn fetch_fintoc_balance(
     client: &HttpsClient,
     credentials: &AccountCredentials,
+    account_type: AccountType,
 ) -> Result<(Amount, Currency)> {
     let request = Request::builder()
         .method(Method::GET)
@@ -106,8 +109,30 @@ pub async fn fetch_fintoc_balance(
 
     let account: Account = serde_json::from_slice(&bytes)?;
 
+    let mut balance = 
+    match account_type {
+        AccountType::Checking => Amount(account.balance.current as f64),
+        AccountType::Savings => Amount(account.balance.current as f64),
+        AccountType::Credit => {
+            Amount((account.balance.limit - account.balance.available) as f64)
+        }
+    };
+
+    balance = match account.currency.to_uppercase().as_str() {
+        "CLP" => balance,
+        "USD" => Amount(balance.0 / 100.0),
+        "EUR" => Amount(balance.0 / 100.0),
+        _ => {
+            bail!(
+                "Currency {} is not supported.",
+                account.currency.to_uppercase(),
+            );
+
+        }
+    };
+
     Ok((
-        Amount(account.balance.current as f64),
+        balance,
         *rusty_money::iso::find(&account.currency)
             .ok_or_else(|| anyhow!("Given currency {} is not valid", account.currency))?,
     ))

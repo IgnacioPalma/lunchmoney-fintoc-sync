@@ -17,6 +17,7 @@ pub struct Tag {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "snake_case")]
+#[allow(dead_code)]
 pub enum TransactionStatus {
     Cleared,
     Uncleared,

@@ -119,7 +119,7 @@ pub async fn fetch_fintoc_balance(
     };
 
     balance = match account.currency.to_uppercase().as_str() {
-        "CLP" => balance,
+        "CLP" => Amount(balance.0),
         "USD" => Amount(balance.0 / 100.0),
         "EUR" => Amount(balance.0 / 100.0),
         _ => {

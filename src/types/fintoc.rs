@@ -32,7 +32,7 @@ pub struct Account {
     pub account_type: String,
     pub currency: String,
     pub balance: Balance,
-    pub refreshed_at: DateTime<Utc>,
+    pub refreshed_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Deserialize)]

@@ -54,6 +54,8 @@ struct Account {
     lunch_money_asset_id: String,
     #[serde(rename = "type")]
     account_type: AccountType,
+    #[serde(default)]
+    skip_movements: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -76,14 +78,14 @@ struct Cmd {
 
 #[derive(Subcommand)]
 enum Verb {
-    ListMovements {
+    Movements {
         #[clap(default_value = "")]
         bank_name: String,
         #[clap(default_value = "")]
         account_name: String,
     },
-    ListLunchMoneyAssets,
-    SyncFintocMovements {
+    Assets,
+    Sync {
         #[clap(default_value = "")]
         bank_name: String,
         #[clap(default_value = "")]
@@ -174,7 +176,18 @@ async fn cmd_list_fintoc_transactions(
 
 async fn cmd_list_lunch_money_assets(client: &HttpsClient, config: &AppConfig) -> Result<()> {
     let assets = get_all_assets(client, &config.tokens.lunch_money_api_token).await?;
-    println!("{:#?}", assets);
+    for asset in assets {
+        println!(
+            "{}",
+            format!(
+                "{} - {}: {}",
+                asset.id.unwrap().to_string().blue().bold(),
+                asset.display_name.unwrap_or("Unnamed".to_string()),
+                asset.balance.0.to_string().green()
+            )
+            .bold()
+        );
+    }
     Ok(())
 }
 
@@ -211,6 +224,7 @@ async fn cmd_sync_fintoc_movements(
                 .filter(|a| a.name == account_name)
                 .collect::<Vec<_>>()
         };
+        let mut existing_count = 0;
 
         for account in accounts_to_sync {
             println!(
@@ -233,19 +247,11 @@ async fn cmd_sync_fintoc_movements(
                     "Found current account balance: {} {}",
                     balance_amount, balance_currency
                 )
-                .green()
+                .blue()
             );
+            let mut existing_count = 0;
 
-            if account.account_type == AccountType::Credit {
-                println!(
-                    "{}",
-                    format!(
-                        "Skipping movements sync for {} - {} as it's credit.",
-                        bank.name, account.name
-                    )
-                    .yellow()
-                );
-            } else {
+            if !account.skip_movements {
                 let movements =
                     fetch_fintoc_movements(client, &credentials, start_date, end_date).await?;
 
@@ -273,7 +279,6 @@ async fn cmd_sync_fintoc_movements(
                     .collect::<Vec<Transaction>>();
 
                 let mut synced_transactions: Vec<u64> = Vec::new();
-                let mut existing_count = 0;
 
                 for transaction_chunk in &lunchmoney_transactions.into_iter().chunks(50) {
                     let (ids, existing_count_chunk) = insert_transactions(
@@ -290,6 +295,35 @@ async fn cmd_sync_fintoc_movements(
                 }
 
                 pb.finish_and_clear();
+
+                if existing_count > 0 {
+                    println!(
+                        "{}",
+                        format!(
+                            "Finished syncing movements for {} - {} with {} existing transactions.",
+                            bank.name, account.name, existing_count
+                        )
+                        .blue()
+                    );
+                } else {
+                    println!(
+                        "{}",
+                        format!(
+                            "Finished syncing movements for {} - {}.",
+                            bank.name, account.name
+                        )
+                        .blue()
+                    );
+                }
+            } else {
+                println!(
+                    "{}",
+                    format!(
+                        "Skipping movements sync for {} - {} per configuration.",
+                        bank.name, account.name
+                    )
+                    .yellow()
+                );
             }
 
             update_asset_balance(
@@ -301,10 +335,32 @@ async fn cmd_sync_fintoc_movements(
             )
             .await?;
 
-            println!("{}", "Updated asset balance successfully.".green());
+            println!(
+                "{}",
+                format!(
+                    "Updated asset balance successfully to {} {}",
+                    balance_amount, balance_currency
+                )
+                .to_string()
+                .blue()
+            );
 
             // Finished sync! (either with or without movements)
-            println!("{}\n", "Finished sync!".bold());
+            if existing_count > 0 {
+                println!(
+                    "{}",
+                    format!(
+                        "Finished sync for {} - {} with {} existing transactions.",
+                        bank.name, account.name, existing_count
+                    )
+                    .bold()
+                );
+            } else {
+                println!(
+                    "{}",
+                    format!("Finished sync for {} - {}.", bank.name, account.name).bold()
+                );
+            }
         }
     }
 
@@ -325,15 +381,15 @@ async fn main() -> Result<()> {
     let client = Client::builder().build::<_, hyper::Body>(https);
 
     match cmd.verb {
-        Verb::ListMovements {
+        Verb::Movements {
             bank_name,
             account_name,
         } => {
             cmd_list_fintoc_transactions(&client, &config, &bank_name, &account_name, cmd.debug)
                 .await
         }
-        Verb::ListLunchMoneyAssets => cmd_list_lunch_money_assets(&client, &config).await,
-        Verb::SyncFintocMovements {
+        Verb::Assets => cmd_list_lunch_money_assets(&client, &config).await,
+        Verb::Sync {
             bank_name,
             account_name,
         } => cmd_sync_fintoc_movements(&client, &config, &bank_name, &account_name).await,

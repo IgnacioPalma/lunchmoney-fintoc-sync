@@ -1,4 +1,6 @@
-# lunchmoney-fintoc-syncer
+# lunchmoney-fintoc-syncer (Based on Agucova's work on [GitHub](https://github.com/agucova/lunchmoney-fintoc-sync))
+
+> Sadly, I got lots of issues when forking the original repo, so I decided to create a new one from scratch. This is a fork of [agucova/lunchmoney-fintoc-sync](https://github.com/agucova/lunchmoney-fintoc-sync)
 
 A Rust CLI to sync transactions from Chilean banks with the [Lunch Money budget app](https://lunchmoney.app). This uses [Fintoc](https://fintoc.com/), which provides a free API for querying your bank transactions. This should work with pretty much any Chilean bank.
 
@@ -163,7 +165,7 @@ If you encounter issues:
 
 This tool currently requires manual execution (`cargo run sync`), but you can automate it using system scheduling or GitHub Actions.
 
-### Option 1: GitHub Actions (Recommended)
+### GitHub Actions (Recommended)
 
 The repository includes a GitHub Action that runs every 6 hours automatically. To set it up:
 
@@ -183,77 +185,3 @@ The repository includes a GitHub Action that runs every 6 hours automatically. T
 4. **Enable GitHub Actions** in your repository settings if not already enabled
 5. **The workflow will run automatically** every 6 hours at 00:00, 06:00, 12:00, and 18:00 UTC
 6. **Manual trigger**: You can also run it manually from the Actions tab → "Lunch Money Fintoc Sync" → "Run workflow"
-
-### Option 2: Local Cron Job (Linux/macOS)
-
-Set up a cron job to run the sync automatically on your local machine:
-
-```bash
-# Edit your crontab
-crontab -e
-
-# Add one of these lines (choose frequency that works for you):
-# Every 6 hours
-0 */6 * * * cd /path/to/lunchmoney-fintoc-sync && cargo run sync
-
-# Twice daily at 9 AM and 6 PM
-0 9,18 * * * cd /path/to/lunchmoney-fintoc-sync && cargo run sync
-
-# Once daily at 8 AM
-0 8 * * * cd /path/to/lunchmoney-fintoc-sync && cargo run sync
-```
-
-### Option 3: Systemd Timer (Linux)
-
-Create a systemd service and timer for more control:
-
-```bash
-# Create service file
-sudo nano /etc/systemd/system/lunchmoney-sync.service
-```
-
-```ini
-[Unit]
-Description=Lunch Money Fintoc Sync
-After=network.target
-
-[Service]
-Type=oneshot
-User=your-username
-WorkingDirectory=/path/to/lunchmoney-fintoc-sync
-ExecStart=/usr/local/cargo/bin/cargo run sync
-```
-
-```bash
-# Create timer file
-sudo nano /etc/systemd/system/lunchmoney-sync.timer
-```
-
-```ini
-[Unit]
-Description=Run Lunch Money sync every 6 hours
-Requires=lunchmoney-sync.service
-
-[Timer]
-OnCalendar=*-*-* 00,06,12,18:00:00
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-```
-
-```bash
-# Enable and start the timer
-sudo systemctl daemon-reload
-sudo systemctl enable lunchmoney-sync.timer
-sudo systemctl start lunchmoney-sync.timer
-```
-
-### Frequency Recommendations
-
-- **Conservative**: Once or twice daily (morning and evening)
-- **Balanced**: Every 6 hours (recommended for GitHub Actions)
-- **Active**: Every 2-4 hours during business hours
-- **Aggressive**: Every hour (may hit API rate limits)
-
-**Note**: Be mindful of Fintoc and Lunch Money API rate limits when choosing frequency. The GitHub Action is set to sync every 6 hours and only fetches the last day of transactions to minimize API usage.

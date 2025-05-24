@@ -1,7 +1,6 @@
 use anyhow::anyhow;
 use anyhow::bail;
 use anyhow::Context;
-use anyhow::Error;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use hyper::header::{AUTHORIZATION, CONTENT_TYPE};

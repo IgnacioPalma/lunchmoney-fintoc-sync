@@ -85,6 +85,10 @@ enum Verb {
         account_name: String,
     },
     Assets,
+    Accounts {
+        #[clap(default_value = "")]
+        bank_name: String,
+    },
     Sync {
         #[clap(default_value = "")]
         bank_name: String,
@@ -98,7 +102,7 @@ async fn cmd_list_fintoc_transactions(
     config: &AppConfig,
     bank_name: &str,
     account_name: &str,
-    debug: bool,
+    _debug: bool,
 ) -> Result<()> {
     let banks_to_list = if bank_name.is_empty() {
         config.banks.iter().collect::<Vec<_>>()
@@ -224,7 +228,7 @@ async fn cmd_sync_fintoc_movements(
                 .filter(|a| a.name == account_name)
                 .collect::<Vec<_>>()
         };
-        let mut existing_count = 0;
+        let _existing_count = 0;
 
         for account in accounts_to_sync {
             println!(
@@ -367,6 +371,78 @@ async fn cmd_sync_fintoc_movements(
     Ok(())
 }
 
+async fn cmd_list_fintoc_accounts(
+    client: &HttpsClient,
+    config: &AppConfig,
+    bank_name: &str,
+) -> Result<()> {
+    let banks_to_list = if bank_name.is_empty() {
+        config.banks.iter().collect::<Vec<_>>()
+    } else {
+        config
+            .banks
+            .iter()
+            .filter(|b| b.name == bank_name)
+            .collect::<Vec<_>>()
+    };
+
+    for bank in banks_to_list {
+        println!(
+            "{}",
+            format!("Listing accounts for bank: {}", bank.name).bold()
+        );
+
+        // Make request to get link details
+        let request = hyper::Request::builder()
+            .method(hyper::Method::GET)
+            .uri(format!("https://api.fintoc.com/v1/links/{}", bank.link_token))
+            .header("Authorization", &config.tokens.fintoc_secret_token)
+            .header("Content-Type", "application/json")
+            .body(hyper::Body::empty())?;
+
+        let response = client.request(request).await?;
+        let status = response.status();
+        let bytes = hyper::body::to_bytes(response).await?;
+
+        if status != hyper::StatusCode::OK {
+            println!(
+                "{}",
+                format!(
+                    "Failed to get accounts for bank {}, code {}, error: {}",
+                    bank.name,
+                    status,
+                    String::from_utf8_lossy(&bytes)
+                )
+                .red()
+            );
+            continue;
+        }
+
+        let link_data: serde_json::Value = serde_json::from_slice(&bytes)?;
+
+        if let Some(accounts) = link_data.get("accounts").and_then(|a| a.as_array()) {
+            for account in accounts {
+                if let (Some(id), Some(name), Some(account_type)) = (
+                    account.get("id").and_then(|i| i.as_str()),
+                    account.get("name").and_then(|n| n.as_str()),
+                    account.get("type").and_then(|t| t.as_str()),
+                ) {
+                    println!(
+                        "  {} - {} ({})",
+                        id.blue().bold(),
+                        name,
+                        account_type.green()
+                    );
+                }
+            }
+        } else {
+            println!("No accounts found or invalid response format");
+        }
+    }
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let cmd = Cmd::parse();
@@ -389,6 +465,9 @@ async fn main() -> Result<()> {
                 .await
         }
         Verb::Assets => cmd_list_lunch_money_assets(&client, &config).await,
+        Verb::Accounts { bank_name } => {
+            cmd_list_fintoc_accounts(&client, &config, &bank_name).await
+        }
         Verb::Sync {
             bank_name,
             account_name,

@@ -3,57 +3,57 @@ name: Lunch Money Fintoc Sync
 on:
   schedule:
     # Run every 6 hours (at 00:00, 06:00, 12:00, 18:00 UTC)
-    - cron: '0 */6 * * *'
+    - cron: "0 */6 * * *"
   workflow_dispatch: # Allow manual triggering
 
 jobs:
   sync:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
-    
-    - name: Cache cargo registry
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-
-    
-    - name: Create config.toml from secrets
-      run: |
-        cat > config.toml << EOF
-        [tokens]
-        fintoc_secret_token = "${{ secrets.FINTOC_SECRET_TOKEN }}"
-        lunch_money_api_token = "${{ secrets.LUNCH_MONEY_API_TOKEN }}"
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-        [[banks]]
-        name = "${{ secrets.BANK_NAME }}"
-        link_token = "${{ secrets.FINTOC_LINK_TOKEN }}"
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
-        [[banks.accounts]]
-        name = "${{ secrets.ACCOUNT_NAME }}"
-        fintoc_account_id = "${{ secrets.FINTOC_ACCOUNT_ID }}"
-        lunch_money_asset_id = "${{ secrets.LUNCH_MONEY_ASSET_ID }}"
-        type = "${{ secrets.ACCOUNT_TYPE }}"
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
 
-        [sync_settings]
-        default_start_from = "1d"
-        EOF
-    
-    - name: Run sync
-      run: cargo run sync
-      env:
-        RUST_LOG: info
-    
-    - name: Clean up config
-      if: always()
-      run: rm -f config.toml
+      - name: Create config.toml from secrets
+        run: |
+          cat > config.toml << EOF
+          [tokens]
+          fintoc_secret_token = "${{ secrets.FINTOC_SECRET_TOKEN }}"
+          lunch_money_api_token = "${{ secrets.LUNCH_MONEY_API_TOKEN }}"
+
+          [[banks]]
+          name = "${{ secrets.BANK_NAME }}"
+          link_token = "${{ secrets.FINTOC_LINK_TOKEN }}"
+
+          [[banks.accounts]]
+          name = "${{ secrets.ACCOUNT_NAME }}"
+          fintoc_account_id = "${{ secrets.FINTOC_ACCOUNT_ID }}"
+          lunch_money_asset_id = "${{ secrets.LUNCH_MONEY_ASSET_ID }}"
+          type = "${{ secrets.ACCOUNT_TYPE }}"
+
+          [sync_settings]
+          default_start_from = "1d"
+          EOF
+
+      - name: Run sync
+        run: cargo run sync
+        env:
+          RUST_LOG: info
+
+      - name: Clean up config
+        if: always()
+        run: rm -f config.toml

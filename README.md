@@ -170,6 +170,7 @@ The repository includes a GitHub Action that runs every 6 hours automatically. T
 1. **Fork or push this repository to GitHub**
 2. **Go to your repository Settings → Secrets and variables → Actions**
 3. **Add the following repository secrets:**
+
    - `FINTOC_SECRET_TOKEN`: Your Fintoc secret token
    - `LUNCH_MONEY_API_TOKEN`: Your Lunch Money API token
    - `BANK_NAME`: Your bank name (e.g., "BancoEstado")

@@ -99,30 +99,7 @@ cargo run sync [bank_name] [account_name]
 
 Syncs transactions from your bank account to Lunch Money. Leave bank_name and account_name empty to sync all configured accounts.
 
-## Configuration
-
-All configuration is done via the `config.toml` file. Here's a complete example:
-
-```toml
-[tokens]
-fintoc_secret_token = "sk_live_Bwb2ywks55z7jvsyhuSJAA72TzpZib7eNqSrcoEsAzx"
-lunch_money_api_token = "dde134c6e65071557b09f0780940ed8e41c3a04d049bc09236"
-
-[[banks]]
-name = "BancoEstado"
-link_token = "link_0xVGPvixKJorLRMw_token_xAs6j8cyczAyQHTxvkzmrFYg"
-
-[[banks.accounts]]
-name = "Cuenta Vista"
-fintoc_account_id = "acc_8XkZle9Tx6RwlVQ6"  # Obtained from ./get_accounts.sh
-lunch_money_asset_id = "168494"              # Obtained from cargo run assets
-type = "Checking"
-
-[sync_settings]
-default_start_from = "30d"  # Can be "1d", "7d", "30d", etc.
-```
-
-### Configuration Options
+## Configuration Options
 
 - **Multiple banks and accounts**: You can add multiple `[[banks]]` sections and multiple `[[banks.accounts]]` under each bank
 - **Time ranges**: Set `default_start_from` to control how far back to sync (e.g., "1d", "7d", "30d")
